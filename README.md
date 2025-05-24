@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Broiler Tracker</title>
     <style>
-        /* ... (CSS Anda tetap sama) ... */
         body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
         h1 { text-align: center; color: #0056b3; }
         .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -43,12 +42,16 @@
             border-collapse: collapse;
             margin-top: 25px;
             box-shadow: 0 0 8px rgba(0,0,0,0.05);
+            /* Tambahkan ini untuk membantu layout tabel */
+            table-layout: auto; /* Bisa 'fixed' juga jika Anda ingin kontrol lebar kolom yang ketat */
         }
         th, td {
             padding: 12px;
             border: 1px solid #eee;
             text-align: center;
             vertical-align: middle;
+            word-wrap: break-word; /* Penting untuk teks panjang agar tidak meluber */
+            min-width: 50px; /* Minimal lebar kolom */
         }
         th {
             background-color: #f2f2f2;
@@ -78,6 +81,23 @@
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        /* Gaya Khusus untuk PDF */
+        /* Anda bisa menambahkan kelas ini ke elemen yang akan dicetak untuk gaya khusus PDF */
+        .pdf-report-section h2 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #0056b3;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .pdf-report-section table {
+            width: 100%;
+            font-size: 0.9em; /* Sesuaikan ukuran font tabel untuk PDF agar muat */
+        }
+        .pdf-report-section th, .pdf-report-section td {
+            padding: 5px; /* Kurangi padding untuk efisiensi ruang */
         }
     </style>
 </head>
@@ -265,6 +285,7 @@
                 const sisaAyamHariIni = initialData.populasiAwal - cumulativeAyamMati;
 
                 // FCR Calculation: Total Feed Consumed (Kg) / (Estimated Live Weight (Kg))
+                // Estimated Live Weight = Sisa Ayam * ABW terakhir (dalam Kg)
                 const totalPakanTerpakaiKumulatifKg = cumulativePakanTerpakaiKarung * PAKAN_PER_KARUNG_KG;
                 const estimatedLiveWeightKg = (sisaAyamHariIni * lastABW) / 1000; // ABW from gram to Kg
 
@@ -274,7 +295,7 @@
                 }
 
 
-                const row = tbody.insertCell();
+                const row = tbody.insertRow();
                 row.innerHTML = `
                     <td>${entry.tanggal}</td>
                     <td>${entry.abw}</td>
@@ -379,17 +400,12 @@
             // Buat elemen div sementara untuk menampung konten yang akan dicetak
             const printContent = document.createElement('div');
             printContent.id = 'pdf-content'; // Beri ID agar mudah ditargetkan
+            printContent.classList.add('pdf-report-section'); // Tambahkan kelas untuk styling khusus PDF
 
-            // Tambahkan CSS minimal untuk cetak jika diperlukan
-            printContent.style.fontFamily = 'Arial, sans-serif';
-            printContent.style.padding = '20px';
-
-            // 1. Tambahkan data awal peternakan
-            const initialDataHtml = document.querySelector('.initial-data-form').outerHTML;
+            // 1. Tambahkan judul laporan
             printContent.innerHTML += '<h1>Broiler Tracker Laporan</h1>';
-            printContent.innerHTML += '<h2>Data Awal Peternakan</h2>' + initialDataHtml;
 
-            // 2. Tambahkan ringkasan keseluruhan
+             // 2. Tambahkan ringkasan keseluruhan
             const summaryHtml = document.getElementById('ringkasan').outerHTML;
             printContent.innerHTML += summaryHtml;
 
@@ -397,7 +413,6 @@
             printContent.innerHTML += '<h2>Data Harian</h2>';
 
             // 4. Tambahkan tabel data
-            // Kita perlu tabel bersih tanpa tombol aksi untuk PDF
             const originalTable = document.getElementById('dataTable');
             const clonedTable = originalTable.cloneNode(true); // Clone tabel asli
 
