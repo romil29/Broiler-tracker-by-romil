@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Broiler Tracker</title>
     <style>
+        /* ... (CSS Anda tetap sama) ... */
         body { font-family: Arial, sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
         h1 { text-align: center; color: #0056b3; }
         .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -264,7 +265,6 @@
                 const sisaAyamHariIni = initialData.populasiAwal - cumulativeAyamMati;
 
                 // FCR Calculation: Total Feed Consumed (Kg) / (Estimated Live Weight (Kg))
-                // Estimated Live Weight = Sisa Ayam * ABW terakhir (dalam Kg)
                 const totalPakanTerpakaiKumulatifKg = cumulativePakanTerpakaiKarung * PAKAN_PER_KARUNG_KG;
                 const estimatedLiveWeightKg = (sisaAyamHariIni * lastABW) / 1000; // ABW from gram to Kg
 
@@ -274,7 +274,7 @@
                 }
 
 
-                const row = tbody.insertRow();
+                const row = tbody.insertCell();
                 row.innerHTML = `
                     <td>${entry.tanggal}</td>
                     <td>${entry.abw}</td>
@@ -326,9 +326,9 @@
                 fcrOverall = (totalPakanTerpakaiKumulatifKg / estimatedLiveWeightKgOverall).toFixed(2);
             } else if (dailyEntries.length > 0 && initialData.populasiAwal > 0) {
                  // Fallback FCR for cases with no ABW recorded yet but some activity
-                 // This might be less accurate, but provides a value.
                  fcrOverall = (totalPakanTerpakaiKumulatifKg / (initialData.populasiAwal * (lastABW || 1) / 1000)).toFixed(2);
             }
+
 
             ringkasanDiv.innerHTML = `
                 <h2>Ringkasan Keseluruhan</h2>
@@ -376,7 +376,51 @@
         }
 
         function cetakPDF() {
-            const element = document.querySelector('.container'); // Targetkan div .container untuk dicetak
+            // Buat elemen div sementara untuk menampung konten yang akan dicetak
+            const printContent = document.createElement('div');
+            printContent.id = 'pdf-content'; // Beri ID agar mudah ditargetkan
+
+            // Tambahkan CSS minimal untuk cetak jika diperlukan
+            printContent.style.fontFamily = 'Arial, sans-serif';
+            printContent.style.padding = '20px';
+
+            // 1. Tambahkan data awal peternakan
+            const initialDataHtml = document.querySelector('.initial-data-form').outerHTML;
+            printContent.innerHTML += '<h1>Broiler Tracker Laporan</h1>';
+            printContent.innerHTML += '<h2>Data Awal Peternakan</h2>' + initialDataHtml;
+
+            // 2. Tambahkan ringkasan keseluruhan
+            const summaryHtml = document.getElementById('ringkasan').outerHTML;
+            printContent.innerHTML += summaryHtml;
+
+            // 3. Tambahkan judul untuk tabel
+            printContent.innerHTML += '<h2>Data Harian</h2>';
+
+            // 4. Tambahkan tabel data
+            // Kita perlu tabel bersih tanpa tombol aksi untuk PDF
+            const originalTable = document.getElementById('dataTable');
+            const clonedTable = originalTable.cloneNode(true); // Clone tabel asli
+
+            // Hapus kolom "Aksi" dari tabel kloningan
+            const headerRow = clonedTable.querySelector('thead tr');
+            if (headerRow) {
+                const actionHeader = headerRow.querySelector('th:last-child');
+                if (actionHeader && actionHeader.textContent.trim() === 'Aksi') {
+                    actionHeader.remove(); // Hapus header 'Aksi'
+                }
+            }
+            const bodyRows = clonedTable.querySelectorAll('tbody tr');
+            bodyRows.forEach(row => {
+                const actionCell = row.querySelector('td:last-child');
+                if (actionCell) {
+                    actionCell.remove(); // Hapus sel 'Aksi' dari setiap baris
+                }
+            });
+            
+            printContent.appendChild(clonedTable); // Tambahkan tabel kloningan ke printContent
+
+            // Masukkan elemen sementara ke body untuk html2pdf bisa membacanya
+            document.body.appendChild(printContent);
 
             // Opsi untuk html2pdf
             const opt = {
@@ -384,16 +428,13 @@
                 filename: 'Broiler_Tracker_Laporan.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, logging: true, dpi: 192, letterRendering: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // Ubah orientasi menjadi landscape
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // Orientasi Landscape
             };
 
-            // Tambahkan judul ke elemen yang akan dicetak untuk laporan PDF yang lebih baik
-            const titleElement = document.createElement('h2');
-            titleElement.textContent = 'Laporan Broiler Tracker';
-            element.prepend(titleElement); // Tambahkan judul di awal elemen kontainer
-
-            html2pdf().set(opt).from(element).save().then(() => {
-                element.removeChild(titleElement); // Hapus judul setelah PDF dibuat agar tidak mengganggu tampilan web
+            // Buat dan simpan PDF
+            html2pdf().set(opt).from(printContent).save().then(() => {
+                // Setelah PDF dibuat, hapus elemen sementara dari DOM
+                document.body.removeChild(printContent);
             });
         }
     </script>
